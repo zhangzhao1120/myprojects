@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.itheima.dao.CheckGroupDao">
+
+    <resultMap id="baseResultMap" type="com.itheima.pojo.CheckGroup">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="code" property="code"/>
+        <result column="helpCode" property="helpCode"/>
+        <result column="sex" property="sex"/>
+        <result column="remark" property="remark"/>
+        <result column="attention" property="attention"/>
+    </resultMap>
+
+    <resultMap id="findByIdResultMap" type="com.itheima.pojo.CheckGroup" extends="baseResultMap">
+        <!--检查组和检查项多对多关联查询-->
+        <collection property="checkItems"
+                    ofType="com.itheima.pojo.CheckItem"
+                    column="id"
+                    select="com.itheima.dao.CheckItemDao.findCheckItemById"
+        ></collection>
+    </resultMap>
+<!--在检查组里新增基本信息-->
+    <insert id="addGroup" parameterType="checkgroup">
+--          mybatis提供的获取上一条插入的id
+        <selectKey resultType="java.lang.Integer" order="AFTER" keyProperty="id">
+             select LAST_INSERT_ID()
+         </selectKey>
+
+         insert into t_checkgroup
+                      values
+        (null,#{code},#{name},#{helpCode},#{sex},#{remark},#{attention})
+    </insert>
+
+<!--往中间表中插入数据-->
+    <insert id="addGroupItem" parameterType="map">
+        insert into t_checkgroup_checkitem  values (#{groupId},#{checkitemId})
+    </insert>
+    <!--查询检查组的数据-->
+    <select id="findPage" parameterType="java.lang.String" resultType="checkgroup">
+        select * from t_checkgroup
+        <where>
+            <if test="value!=null and value!='' and value.length>0">
+                code like '%${value}%' or name like '%${value}%' or helpCode like '%${value}%'
+            </if>
+        </where>
+    </select>
+    <!--根据检查组的id获取该组的所有检查项id-->
+    <select id="selectCheckIdsByGroupId" parameterType="Integer" resultType="Integer">
+        select checkitem_id from t_checkgroup_checkitem where checkgroup_id=#{checkgroup_id}
+    </select>
+    <!--根据检查组id修改对应的基本信息-->
+    <update id="editbase" parameterType="CheckGroup">
+        update t_checkgroup set code=#{code},name=#{name},helpCode=#{helpCode},sex=#{sex},remark=#{remark},attention=#{attention}where id=#{id}
+    </update>
+
+    <delete id="deleteRelByGroupId" parameterType="Integer">
+        delete from t_checkgroup_checkitem where checkgroup_id=#{checkgroup_id}
+    </delete>
+    <select id="findAll" resultType="checkgroup">
+        select * from t_checkgroup
+    </select>
+
+    <select id="finditemsById" parameterType="int" resultType="Long">
+        select count(checkitem_id) from t_checkgroup_checkitem where checkgroup_id=#{checkgroup_id}
+    </select>
+
+    <select id="findmealsById" parameterType="int" resultType="Long">
+        select count(setmeal_id) from t_setmeal_checkgroup where checkgroup_id=#{checkgroup_id}
+    </select>
+    <delete id="delete" parameterType="int">
+        delete from t_checkgroup where id=#{id}
+    </delete>
+    <!--根据套餐ID查询关联的检查组详情-->
+    <select id="findCheckGroupById" parameterType="int" resultMap="findByIdResultMap">
+        select * from t_checkgroup where id in (select checkgroup_id from t_setmeal_checkgroup where setmeal_id = #{setmeal_id})
+    </select>
+</mapper>
